@@ -33,13 +33,15 @@ def find_available_port(start_port=8000):
 
 def main():
     import uvicorn
-    port = find_available_port(8000)
+    env_port = os.environ.get("PORT")
+    port = int(env_port) if env_port else find_available_port(8000)
+    host = "0.0.0.0" if env_port else "127.0.0.1"
     url = f"http://127.0.0.1:{port}"
 
     print("=" * 70)
     print("   AI-POWERED SMART NOTICE MANAGEMENT & RECOMMENDATION SYSTEM   ")
     print("=" * 70)
-    print(f"[*] Starting Local Server on: {url}")
+    print(f"[*] Starting Server on {host}:{port}")
     print("[-] Integrated AI Tools:")
     print("    * PaddleOCR: Scanned circular text & layout detection")
     print("    * Sentence Transformers: 384-dimensional dense semantic embeddings")
@@ -69,7 +71,7 @@ def main():
         app_module = "smart_notice_system.backend.app:app"
 
     # Run Uvicorn server
-    uvicorn.run(app_module, host="127.0.0.1", port=port, log_level="info")
+    uvicorn.run(app_module, host=host, port=port, log_level="info")
 
 if __name__ == "__main__":
     main()
