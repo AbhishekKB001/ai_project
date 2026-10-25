@@ -1,4 +1,5 @@
 import numpy as np
+import re
 from typing import List, Dict, Any, Tuple, Optional
 from .embedding_service import embedding_service, EMBEDDING_DIM
 
@@ -12,6 +13,30 @@ try:
 except Exception as e:
     FAISS_AVAILABLE = False
     print(f"FAISS not loaded directly ({e}). Using optimized cosine vector index.")
+
+STOP_WORDS = {
+    "what", "when", "where", "which", "who", "whom", "this", "that", "these", "those",
+    "am", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had",
+    "having", "do", "does", "did", "doing", "a", "an", "the", "and", "but", "if",
+    "or", "because", "as", "until", "while", "of", "at", "by", "for", "with", "about",
+    "against", "between", "into", "through", "during", "before", "after", "above",
+    "below", "to", "from", "up", "down", "in", "out", "on", "off", "over", "under",
+    "again", "further", "then", "once", "here", "there", "all", "any", "both", "each",
+    "few", "more", "most", "other", "some", "such", "no", "nor", "not", "only", "own",
+    "same", "so", "than", "too", "very", "can", "will", "just", "don", "should", "now",
+    "notice", "notices", "circular", "circulars", "details", "information", "rules"
+}
+
+SYNONYMS = {
+    "exam": ["examinations", "exam", "exams", "midterm", "hall ticket", "grades", "timetable", "syllabus", "supplementary", "sepm", "test", "quiz"],
+    "placement": ["placements", "placement", "job", "jobs", "internship", "interview", "recruitment", "sde", "company", "career", "package", "google", "microsoft", "amazon"],
+    "hackathon": ["hackathon", "hacknova", "coding", "competition", "hackathons"],
+    "scholarship": ["scholarship", "scholarships", "financial aid", "grant", "merit", "fellowship", "waiver"],
+    "fee": ["fees", "fee", "tuition", "payment", "fine", "penalty", "finance", "accounts", "dues"],
+    "hostel": ["hostel", "hostels", "room", "mess", "allotment", "biometric", "campus & hostel", "warden"],
+    "sports": ["sports", "athletics", "tournament", "games", "trials", "inter-collegiate", "cricket", "football"],
+    "library": ["library", "books", "clearance", "repository", "digital library", "academics"]
+}
 
 class VectorSearchService:
     def __init__(self):
@@ -88,45 +113,31 @@ class VectorSearchService:
         department: Optional[str] = None,
         priority: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        """Search nearest notices using a pre-computed query vector."""
+        """Search nearest notices using a pre-computed query vector (used by Recommendation Engine)."""
         if len(self.id_to_notice_id) == 0:
             return []
 
         query_vec = query_vector.reshape(1, -1).astype(np.float32)
-        total_items = len(self.id_to_notice_id)
-        k = total_items  # search full pool of notices to guarantee best semantic ranking
-
-        scores = []
-        indices = []
+        k = len(self.id_to_notice_id)
 
         if FAISS_AVAILABLE and self.index is not None:
             D, I = self.index.search(query_vec, k)
             scores = D[0]
             indices = I[0]
         else:
-            # Fallback cosine calculation
             sims = np.dot(self.vectors, query_vec.T).flatten()
             sorted_indices = np.argsort(-sims)[:k]
             indices = sorted_indices
             scores = sims[sorted_indices]
 
         results = []
-        fallback_results = []
-
-        for rank, (idx, score) in enumerate(zip(indices, scores)):
+        for idx, score in zip(indices, scores):
             if idx < 0 or idx >= len(self.id_to_notice_id):
                 continue
             notice_id = self.id_to_notice_id[idx]
             notice = self.notices_cache.get(notice_id)
             if not notice:
                 continue
-
-            entry = {
-                "notice": notice,
-                "similarity_score": round(float(max(0.0, min(1.0, (score + 1.0) / 2.0 if score < 0 else score))), 4),
-                "raw_score": float(score)
-            }
-            fallback_results.append(entry)
 
             # Filtering
             if category and category != "All" and notice.get("category") != category:
@@ -136,13 +147,16 @@ class VectorSearchService:
             if priority and priority != "All" and notice.get("priority") != priority:
                 continue
 
-            results.append(entry)
+            raw_sim = float(score)
+            sim = max(0.0, raw_sim)
+
+            results.append({
+                "notice": notice,
+                "similarity_score": round(sim, 4),
+                "raw_score": raw_sim
+            })
             if len(results) >= top_k:
                 break
-
-        # If filtering was too strict and returned 0 results, return top semantic matches
-        if not results and fallback_results:
-            results = fallback_results[:top_k]
 
         return results
 
@@ -154,9 +168,103 @@ class VectorSearchService:
         department: Optional[str] = None,
         priority: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        """Encode query text and run semantic search in FAISS."""
-        query_vec = embedding_service.get_embedding(query_text)
-        return self.search_by_vector(query_vec, top_k, category, department, priority)
+        """
+        High-precision topic-aware hybrid search combining FAISS dense semantic embeddings
+        and lexical keyword matching with strict relevance thresholding.
+        """
+        if not query_text or not query_text.strip() or len(self.id_to_notice_id) == 0:
+            return []
+
+        q_lower = query_text.lower().strip()
+        q_tokens = [w for w in re.findall(r'\b\w+\b', q_lower) if len(w) > 2 and w not in STOP_WORDS]
+        query_vec = embedding_service.get_embedding(query_text).reshape(1, -1).astype(np.float32)
+
+        k = len(self.id_to_notice_id)
+        if FAISS_AVAILABLE and self.index is not None:
+            D, I = self.index.search(query_vec, k)
+            faiss_scores = {self.id_to_notice_id[idx]: float(score) for idx, score in zip(I[0], D[0]) if 0 <= idx < k}
+        else:
+            sims = np.dot(self.vectors, query_vec.T).flatten()
+            faiss_scores = {self.id_to_notice_id[idx]: float(sims[idx]) for idx in range(k)}
+
+        candidates = []
+        for notice_id in self.id_to_notice_id:
+            notice = self.notices_cache.get(notice_id)
+            if not notice:
+                continue
+
+            # Explicit dropdown/pill filters
+            if category and category != "All" and notice.get("category") != category:
+                continue
+            if department and department != "All Departments" and notice.get("department") not in [department, "All Departments"]:
+                continue
+            if priority and priority != "All" and notice.get("priority") != priority:
+                continue
+
+            raw_sim = faiss_scores.get(notice_id, 0.0)
+            sim = float(max(0.0, raw_sim))
+
+            title_l = notice.get("title", "").lower()
+            cat_l = notice.get("category", "").lower()
+            content_l = notice.get("content", "").lower()
+            tags_l = " ".join(notice.get("tags", [])).lower()
+            dept_l = notice.get("department", "").lower()
+
+            lex = 0.0
+
+            # 1. Topic & Synonym matching (Exact category intent)
+            for topic_key, syn_list in SYNONYMS.items():
+                if any(syn in q_lower for syn in syn_list):
+                    if any(syn in cat_l for syn in syn_list) or any(syn in title_l for syn in syn_list):
+                        lex = max(lex, 0.85)
+                        break
+
+            # 2. Exact Title Tokens Match
+            if q_tokens:
+                matched_title = [w for w in q_tokens if w in title_l]
+                if matched_title:
+                    ratio = len(matched_title) / len(q_tokens)
+                    lex = max(lex, 0.50 + 0.50 * ratio)
+
+                # 3. Tag Tokens Match
+                matched_tags = [w for w in q_tokens if w in tags_l]
+                if matched_tags:
+                    lex = max(lex, 0.65)
+
+                # 4. Department match
+                if any(w in dept_l for w in q_tokens):
+                    lex = max(lex, 0.50)
+
+                # 5. Content match
+                matched_content = [w for w in q_tokens if w in content_l]
+                if len(matched_content) >= max(1, len(q_tokens)):
+                    lex = max(lex, 0.40)
+
+            # Combined Score: balanced semantic + lexical
+            if lex > 0:
+                final_score = (0.40 * sim + 0.60 * lex)
+            else:
+                final_score = sim
+
+            # Strict Relevance Threshold:
+            # Only include notices that have genuine lexical or high semantic alignment
+            if lex >= 0.45 or sim >= 0.35:
+                candidates.append({
+                    "notice": notice,
+                    "similarity_score": round(float(final_score), 4),
+                    "raw_score": raw_sim,
+                    "lexical_score": lex
+                })
+
+        candidates.sort(key=lambda x: x["similarity_score"], reverse=True)
+
+        # Remove trailing irrelevant notices if top hit is strong
+        if candidates and candidates[0]["similarity_score"] >= 0.50:
+            top_s = candidates[0]["similarity_score"]
+            threshold = max(0.40, top_s * 0.55)
+            candidates = [c for c in candidates if c["similarity_score"] >= threshold]
+
+        return candidates[:top_k]
 
     def get_embedding_space_projection(self) -> List[Dict[str, Any]]:
         """

@@ -118,9 +118,9 @@ async function searchNotices(explicitQuery = null) {
       body: JSON.stringify({
         query: state.searchQuery,
         use_semantic: state.useSemanticSearch,
-        category: state.selectedCategory === "All" ? null : state.selectedCategory,
-        department: state.selectedDept === "All Departments" ? null : state.selectedDept,
-        priority: state.selectedPriority === "All" ? null : state.selectedPriority,
+        category: null,
+        department: null,
+        priority: null,
         limit: 12
       })
     });
