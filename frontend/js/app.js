@@ -163,24 +163,52 @@ function renderHeaderPills() {
 function renderUserPersonaUI() {
   const select = document.getElementById("personaSwitcher");
   const userBadge = document.getElementById("currentUserBadge");
+  const actionContainer = document.getElementById("publishNoticeActionContainer");
+
   if (!state.currentUser) return;
+
+  const isOfficial = state.currentUser.role === "official" || state.currentUser.role === "faculty" || state.currentUser.role === "admin";
 
   if (userBadge) {
     userBadge.innerHTML = `
       <div class="text-right hidden sm:block">
-        <div class="text-sm font-semibold text-slate-200">${state.currentUser.name}</div>
-        <div class="text-xs text-indigo-400">${state.currentUser.department} • ${state.currentUser.year}</div>
+        <div class="text-sm font-semibold text-slate-200 flex items-center justify-end gap-1.5">
+          ${isOfficial ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 font-bold uppercase tracking-wider">Official</span>' : '<span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-950 text-indigo-400 border border-indigo-800 font-bold uppercase tracking-wider">Student</span>'}
+          <span>${state.currentUser.name}</span>
+        </div>
+        <div class="text-xs text-slate-400">${state.currentUser.department} • ${state.currentUser.year}</div>
       </div>
     `;
+  }
+
+  // Update Top Bar Action Button based on Role
+  if (actionContainer) {
+    if (!isOfficial) {
+      actionContainer.innerHTML = `
+        <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700/70 text-slate-400 text-xs cursor-default" title="Student mode: Notice publishing is restricted to verified College Authorities and Faculty.">
+          <i data-lucide="shield" class="w-3.5 h-3.5 text-indigo-400"></i>
+          <span class="hidden sm:inline">Student View</span>
+        </div>
+      `;
+    } else {
+      actionContainer.innerHTML = `
+        <button onclick="openAdminStudioModal()" class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-indigo-600 hover:from-emerald-500 hover:to-indigo-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-md shadow-emerald-600/20">
+          <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+          <span class="hidden sm:inline">Publish Notice</span>
+        </button>
+      `;
+    }
   }
 
   if (select && state.availablePersonas) {
     select.innerHTML = state.availablePersonas.map(p => `
       <option value="${p.user_id}" ${p.user_id === state.currentUser.user_id ? 'selected' : ''}>
-        ${p.name} (${p.department} - ${p.year})
+        ${p.name} [${p.year}]
       </option>
     `).join("");
   }
+
+  lucide.createIcons();
 }
 
 function renderFeed() {
@@ -567,8 +595,24 @@ async function sendChatMessage(promptText = null) {
 // ----------------- OCR Upload & AI Draft Studio ----------------- //
 
 function openAdminStudioModal() {
+  if (state.currentUser?.role === "student") {
+    alert("Notice Publishing Restricted:\n\nIn accordance with university protocol, students cannot publish circulars. Only verified College Authorities (Dean, Examination Controller, HODs, and Faculty) hold publishing privileges.\n\nPlease switch to a College Official or Faculty persona using the Role menu in the top bar.");
+    return;
+  }
   const modal = document.getElementById("adminStudioModal");
   if (modal) modal.classList.remove("hidden");
+
+  const authLabel = document.getElementById("officialPublisherLabel");
+  if (authLabel && state.currentUser) {
+    authLabel.textContent = `Authorized Publisher: ${state.currentUser.name} (${state.currentUser.department})`;
+  }
+
+  // Pre-select department if faculty/official belongs to one
+  const deptSelect = document.getElementById("newNoticeDept");
+  if (deptSelect && state.currentUser && state.currentUser.department !== "Administration" && state.currentUser.department !== "Examination Cell") {
+    deptSelect.value = state.currentUser.department;
+  }
+
   lucide.createIcons();
 }
 
@@ -747,9 +791,15 @@ async function publishNotice() {
         extracted_from_ocr: Boolean(imgPath)
       })
     });
-    const data = await res.json();
+    
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      alert(err.detail || "Failed to publish notice: Unauthorized action.");
+      return;
+    }
 
-    alert("Notice published successfully!");
+    const data = await res.json();
+    alert("Official notice published and broadcasted successfully!");
     closeAdminStudioModal();
     // Refresh feed and system status
     await Promise.all([fetchFeed(), fetchSystemStatus()]);

@@ -1,5 +1,31 @@
 [
   {
+    "title": "OFFICIAL ACADEMIC NOTICE",
+    "category": "Fees & Finance",
+    "department": "All Departments",
+    "target_audience": [
+      "All Students"
+    ],
+    "priority": "High",
+    "content": "COLLEGE OF ENGINEERING & TECHNOLOGY\nOFFICE OF ACADEMIC & ADMINISTRATIVE AFFAIRS\n\nREF NO: CET/ADMIN/2026/HIG-891\nDATE: October 25, 2026\n\nCIRCULAR: SEPM EXAM SYLLABUS\n\nThis is to bring to the notice of all concerned students and faculty members belonging to All Departments that the administration has issued the following directives:\n\n1. sepm exam syllabus.\n2. All affected individuals are requested to strictly adhere to the guidelines and schedule.\n3. Respective departments will coordinate verification and document processing through the official portal.\n4. Failure to comply within the stipulated time frame may attract administrative actions or penalties.\n\nFor further queries, reach out to the Department Helpdesk during official working hours.\n\nBy Order,\nDean of Academic Affairs",
+    "summary": "\u2022 Announcement: OFFICIAL ACADEMIC NOTICE (COLLEGE OF ENGINEERING & TECHNOLOGY\nOFFICE OF ACADEMIC & ADMINISTRATIVE AFFAIRS\n\nREF NO: CET/ADMIN/2026/HIG-891\nDATE: October 25, 2026\n\nCIRCULAR: SEPM EXAM SYLLABUS\n\nThis is to bring to the notice of all concerned students and faculty members belonging to All Departments that the administration has issued the following directives:\n\n1).\n\u2022 Requirements: sepm exam syllabus.\n\u2022 Action Required: Comply with mandatory guidelines by None.",
+    "action_required": false,
+    "deadline": null,
+    "posted_by": "Administrative Department",
+    "tags": [
+      "Civil",
+      "Fees & Finance",
+      "Mandatory"
+    ],
+    "image_path": "/uploads/notice_scan_b5d96a10.png",
+    "extracted_from_ocr": true,
+    "id": "notif-3c7a54",
+    "published_date": "2026-10-25 19:59",
+    "views_count": 1,
+    "bookmarks_count": 0,
+    "is_active": true
+  },
+  {
     "id": "notif-001",
     "title": "Mid-Term Examination Schedule & Hall Ticket Issuance - Fall 2026",
     "category": "Examinations",
@@ -26,7 +52,7 @@
     ],
     "image_path": null,
     "extracted_from_ocr": false,
-    "views_count": 344,
+    "views_count": 347,
     "bookmarks_count": 58,
     "is_active": true
   },
@@ -140,7 +166,7 @@
     ],
     "image_path": null,
     "extracted_from_ocr": false,
-    "views_count": 612,
+    "views_count": 613,
     "bookmarks_count": 47,
     "is_active": true
   },

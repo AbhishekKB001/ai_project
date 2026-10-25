@@ -46,6 +46,16 @@ app.add_middleware(
 # Global active user ID (defaults to student Alex Chen)
 ACTIVE_USER_ID = "std-001"
 
+def check_official_authority():
+    """Verify that current user is an authorized college official, dean, or faculty."""
+    user = db.get_user_profile(ACTIVE_USER_ID)
+    if not user or user.get("role") not in ["official", "faculty", "admin"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Access Restricted: In accordance with university protocol, students are not permitted to publish, modify, or scan circulars. Only authorized College Officials, Dean, and Faculty hold publishing privileges."
+        )
+    return user
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize FAISS Vector Index on application startup."""
@@ -154,9 +164,13 @@ async def get_notice(notice_id: str):
 @app.post("/api/notices")
 async def create_notice(payload: NoticeCreate):
     """Create a new notice, generate AI summary if omitted, and update FAISS index."""
+    official_user = check_official_authority()
+
     notice_dict = payload.dict()
     notice_id = f"notif-{uuid.uuid4().hex[:6]}"
     notice_dict["id"] = notice_id
+    # Tag publisher with official authority name
+    notice_dict["posted_by"] = f"{official_user.get('name')} ({official_user.get('department')})"
 
     # Auto generate summary using Gemini / Claude if not provided
     if not notice_dict.get("summary") or len(notice_dict["summary"].strip()) == 0:
@@ -174,6 +188,7 @@ async def create_notice(payload: NoticeCreate):
 @app.put("/api/notices/{notice_id}")
 async def update_notice(notice_id: str, updates: dict):
     """Update existing notice and refresh FAISS index."""
+    check_official_authority()
     updated = db.update_notice(notice_id, updates)
     if not updated:
         raise HTTPException(status_code=404, detail="Notice not found")
@@ -185,6 +200,7 @@ async def update_notice(notice_id: str, updates: dict):
 @app.delete("/api/notices/{notice_id}")
 async def delete_notice(notice_id: str):
     """Delete notice and rebuild vector index."""
+    check_official_authority()
     success = db.delete_notice(notice_id)
     if not success:
         raise HTTPException(status_code=404, detail="Notice not found")
@@ -292,6 +308,7 @@ async def upload_and_ocr(file: UploadFile = File(...)):
     Upload notice image/scanned circular, run PaddleOCR (or vision fallback),
     and extract dates, title, urgency, category, and department.
     """
+    check_official_authority()
     file_ext = Path(file.filename).suffix.lower()
     if file_ext not in [".jpg", ".jpeg", ".png", ".webp", ".bmp", ".pdf"]:
         raise HTTPException(status_code=400, detail="Supported formats: JPG, PNG, WEBP, BMP, PDF")
@@ -317,6 +334,7 @@ async def upload_and_ocr(file: UploadFile = File(...)):
 @app.post("/api/ai/draft")
 async def ai_draft_notice(req: NoticeDraftRequest):
     """Draft formal circular notice using Gemini or Claude."""
+    check_official_authority()
     res = llm_service.draft_notice(
         prompt=req.prompt,
         category=req.category,
