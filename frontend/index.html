@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI-Powered Smart Notice Management & Recommendation System</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white">
+
+  <!-- Top Navigation Bar -->
+  <header class="sticky top-0 z-40 bg-slate-900/80 backdrop-blur-md border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        
+        <!-- Logo & Title -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <i data-lucide="bell-ring" class="w-5 h-5 text-white"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-base font-bold tracking-tight text-white">NexusNotice <span class="text-gradient">AI</span></span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-900/60 text-indigo-300 border border-indigo-700/60 font-semibold uppercase tracking-wider">Smart Campus</span>
+            </div>
+            <p class="text-[11px] text-slate-400 hidden sm:block">AI-Powered Notice Management & Recommendation System</p>
+          </div>
+        </div>
+
+        <!-- Right Action Items -->
+        <div class="flex items-center gap-3">
+          
+          <!-- Persona Switcher -->
+          <div class="flex items-center gap-2 bg-slate-800/80 px-2.5 py-1.5 rounded-xl border border-slate-700 text-xs">
+            <i data-lucide="user" class="w-3.5 h-3.5 text-indigo-400"></i>
+            <span class="text-slate-400 hidden md:inline">Persona:</span>
+            <select id="personaSwitcher" onchange="switchPersona(this.value)" class="bg-transparent text-slate-200 font-medium focus:outline-none cursor-pointer">
+              <!-- Dynamically populated -->
+            </select>
+          </div>
+
+          <!-- Post Notice / Admin Studio Button -->
+          <button onclick="openAdminStudioModal()" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition flex items-center gap-1.5 shadow-md shadow-indigo-600/30">
+            <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+            <span class="hidden sm:inline">Notice Studio</span>
+          </button>
+
+          <!-- Settings Button -->
+          <button onclick="openSettingsModal()" class="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-300 transition" title="API Settings (Gemini / Claude)">
+            <i data-lucide="sliders" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Hero & Search Section -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    
+    <!-- Hero Banner with Simple Clean Search Bar -->
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-950/60 via-slate-900/80 to-purple-950/40 border border-slate-800 p-6 sm:p-8">
+      
+      <!-- Subtle background ambient circles -->
+      <div class="absolute -top-24 -right-24 w-72 h-72 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-24 -left-24 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="max-w-3xl space-y-4">
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+            Campus Notices & <span class="text-gradient">Announcements</span>
+          </h1>
+          <p class="text-xs sm:text-sm text-slate-300 mt-1 leading-relaxed">
+            Search notices in plain English, track deadlines, and ask questions about exams, fees, and campus events.
+          </p>
+        </div>
+
+        <!-- Search Bar Input Box -->
+        <div class="relative">
+          <div class="flex items-center rounded-2xl glass-panel border border-slate-700 p-1.5 shadow-xl">
+            <div class="pl-3 pr-2 text-indigo-400">
+              <i data-lucide="search" class="w-5 h-5"></i>
+            </div>
+            <input 
+              id="mainSearchInput"
+              type="text" 
+              placeholder="Search notices, e.g. 'When are mid-term exam hall tickets available?' or 'Google placement eligibility'..."
+              class="w-full bg-transparent border-0 text-sm text-slate-100 placeholder-slate-400 focus:outline-none py-2"
+            />
+            <button 
+              id="clearSearchBtn"
+              onclick="clearSearch()"
+              type="button"
+              class="hidden px-2 py-1 text-slate-400 hover:text-white mr-1"
+              title="Clear search"
+            >
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+            <button 
+              onclick="searchNotices()" 
+              type="button"
+              class="px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-md shadow-indigo-600/30 shrink-0 cursor-pointer"
+            >
+              <span>Search</span>
+            </button>
+          </div>
+          
+          <!-- Hidden toggle for semantic search (always enabled in background) -->
+          <input id="semanticSearchToggle" type="checkbox" checked class="hidden">
+
+          <!-- Popular Search Chips -->
+          <div class="flex items-center gap-1.5 text-xs text-slate-400 mt-2.5 px-1 flex-wrap">
+            <span class="text-slate-500 text-[11px]">Popular:</span>
+            <button type="button" onclick="searchNotices('Exam hall ticket rules')" class="text-indigo-400 hover:underline text-[11px]">Exam Rules</button>
+            <span>•</span>
+            <button type="button" onclick="searchNotices('Google placement package and dates')" class="text-indigo-400 hover:underline text-[11px]">Placements</button>
+            <span>•</span>
+            <button type="button" onclick="searchNotices('Fee waiver deadline')" class="text-indigo-400 hover:underline text-[11px]">Fee Waiver</button>
+            <span>•</span>
+            <button type="button" onclick="searchNotices('Hostel room allotment and biometrics')" class="text-indigo-400 hover:underline text-[11px]">Hostel</button>
+          </div>
+        </div>
+
+        <!-- Filter Chips Row -->
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 pt-1 text-xs">
+          <span class="text-slate-400 shrink-0 font-medium text-[11px]">Filter by:</span>
+          <button onclick="filterByCategory('All', this)" class="cat-pill px-3 py-1 rounded-full bg-indigo-600 text-white font-medium shrink-0">All</button>
+          <button onclick="filterByCategory('Examinations', this)" class="cat-pill px-3 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 shrink-0">Examinations</button>
+          <button onclick="filterByCategory('Placements', this)" class="cat-pill px-3 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 shrink-0">Placements</button>
+          <button onclick="filterByCategory('Events', this)" class="cat-pill px-3 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 shrink-0">Events & Hackathons</button>
+          <button onclick="filterByCategory('Scholarships', this)" class="cat-pill px-3 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 shrink-0">Scholarships</button>
+          <button onclick="filterByCategory('Fees & Finance', this)" class="cat-pill px-3 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 shrink-0">Fees</button>
+          <button onclick="filterByCategory('Campus & Hostel', this)" class="cat-pill px-3 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 shrink-0">Hostel</button>
+          <button onclick="filterByCategory('Sports', this)" class="cat-pill px-3 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 shrink-0">Sports</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Navigation Tabs Bar -->
+    <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+      <div class="flex items-center gap-1 sm:gap-2 overflow-x-auto">
+        <button id="tab-btn-recommendations" onclick="switchTab('recommendations')" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-semibold transition flex items-center gap-1.5">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+          <span>For You</span>
+        </button>
+        <button id="tab-btn-all" onclick="switchTab('all')" class="px-3.5 py-1.5 rounded-xl text-slate-400 hover:bg-slate-800 text-xs font-semibold transition flex items-center gap-1.5">
+          <i data-lucide="layout-grid" class="w-3.5 h-3.5"></i>
+          <span>All Notices</span>
+        </button>
+        <button id="tab-btn-deadlines" onclick="switchTab('deadlines')" class="px-3.5 py-1.5 rounded-xl text-slate-400 hover:bg-slate-800 text-xs font-semibold transition flex items-center gap-1.5">
+          <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+          <span>Deadlines</span>
+        </button>
+        <button id="tab-btn-trending" onclick="switchTab('trending')" class="px-3.5 py-1.5 rounded-xl text-slate-400 hover:bg-slate-800 text-xs font-semibold transition flex items-center gap-1.5">
+          <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
+          <span>Trending</span>
+        </button>
+        <button id="tab-btn-analytics" onclick="switchTab('analytics')" class="px-3.5 py-1.5 rounded-xl text-slate-400 hover:bg-slate-800 text-xs font-semibold transition flex items-center gap-1.5">
+          <i data-lucide="pie-chart" class="w-3.5 h-3.5"></i>
+          <span>Overview & Stats</span>
+        </button>
+        <button id="tab-btn-search" onclick="switchTab('search')" class="px-3.5 py-1.5 rounded-xl text-slate-400 hover:bg-slate-800 text-xs font-semibold transition flex items-center gap-1.5 hidden">
+          <i data-lucide="search" class="w-3.5 h-3.5"></i>
+          <span>Search Results</span>
+        </button>
+      </div>
+
+      <!-- Live Persona Badge in subnav -->
+      <div id="currentUserBadge" class="hidden sm:block">
+        <!-- Rendered via app.js -->
+      </div>
+    </div>
+
+    <!-- VIEW 1: Personalized Recommendations -->
+    <section id="view-recommendations" class="space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-bold text-slate-100">
+            Recommended for You
+          </h2>
+          <p class="text-xs text-slate-400">Personalized for your branch, academic year, and interests.</p>
+        </div>
+      </div>
+
+      <div id="recommendationsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <!-- Dynamically injected -->
+      </div>
+    </section>
+
+    <!-- VIEW 2: All Notices Catalog -->
+    <section id="view-all" class="space-y-4 hidden">
+      <div class="flex items-center justify-between flex-wrap gap-2">
+        <h2 class="text-lg font-bold text-slate-100">All Campus Circulars</h2>
+        
+        <!-- Filter dropdowns -->
+        <div class="flex items-center gap-2 text-xs">
+          <select id="filterDeptSelect" onchange="state.selectedDept = this.value; fetchAllNotices();" class="bg-slate-800 text-slate-300 border border-slate-700 rounded-xl px-2.5 py-1.5 focus:outline-none">
+            <option value="All Departments">All Departments</option>
+            <option value="Computer Science">Computer Science</option>
+            <option value="Electronics">Electronics</option>
+            <option value="Mechanical">Mechanical</option>
+            <option value="Management">Management</option>
+          </select>
+
+          <select id="filterPrioritySelect" onchange="state.selectedPriority = this.value; fetchAllNotices();" class="bg-slate-800 text-slate-300 border border-slate-700 rounded-xl px-2.5 py-1.5 focus:outline-none">
+            <option value="All">All Priorities</option>
+            <option value="Critical">Critical Only</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="allNoticesContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <!-- Dynamically injected -->
+      </div>
+    </section>
+
+    <!-- VIEW 3: Critical Deadlines -->
+    <section id="view-deadlines" class="space-y-4 hidden">
+      <div>
+        <h2 class="text-lg font-bold text-red-400 flex items-center gap-2">
+          <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+          <span>Critical Deadlines & Expiring Actions</span>
+        </h2>
+        <p class="text-xs text-slate-400">Do not miss these important payment, application, and hall ticket deadlines.</p>
+      </div>
+
+      <div id="criticalDeadlinesContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <!-- Dynamically injected -->
+      </div>
+    </section>
+
+    <!-- VIEW 4: Campus Trends -->
+    <section id="view-trending" class="space-y-4 hidden">
+      <div>
+        <h2 class="text-lg font-bold text-amber-400 flex items-center gap-2">
+          <i data-lucide="flame" class="w-5 h-5"></i>
+          <span>Trending Notices on Campus</span>
+        </h2>
+        <p class="text-xs text-slate-400">Most viewed and bookmarked announcements this week.</p>
+      </div>
+
+      <div id="trendingContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <!-- Dynamically injected -->
+      </div>
+    </section>
+
+    <!-- VIEW 5: Search Results -->
+    <section id="view-search" class="space-y-4 hidden">
+      <div class="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+            <span>Search Results for</span>
+            <span id="searchQueryDisplay" class="text-indigo-400 font-semibold"></span>
+          </h2>
+          <span id="searchResultCount" class="text-xs text-slate-400">0 results</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="clearSearch()" type="button" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium flex items-center gap-1.5 border border-slate-700 transition">
+            <i data-lucide="x" class="w-3.5 h-3.5"></i>
+            <span>Clear Search</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="searchResultsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <!-- Dynamically injected -->
+      </div>
+    </section>
+
+    <!-- VIEW 6: Analytics & Overview -->
+    <section id="view-analytics" class="space-y-6 hidden">
+      
+      <!-- Top Stat Cards -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="glass-panel rounded-2xl p-4 border border-slate-800">
+          <div class="text-xs text-slate-400 mb-1">Total Notices</div>
+          <div id="statTotalNotices" class="text-2xl font-bold text-white">0</div>
+        </div>
+        <div class="glass-panel rounded-2xl p-4 border border-slate-800">
+          <div class="text-xs text-slate-400 mb-1">Total Reads</div>
+          <div id="statTotalViews" class="text-2xl font-bold text-indigo-400">0</div>
+        </div>
+        <div class="glass-panel rounded-2xl p-4 border border-slate-800">
+          <div class="text-xs text-slate-400 mb-1">Total Bookmarks</div>
+          <div id="statTotalBookmarks" class="text-2xl font-bold text-amber-400">0</div>
+        </div>
+        <div class="glass-panel rounded-2xl p-4 border border-slate-800">
+          <div class="text-xs text-slate-400 mb-1">Active Categories</div>
+          <div id="statTotalVectors" class="text-2xl font-bold text-purple-400">8</div>
+        </div>
+      </div>
+
+      <!-- Charts Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Category Doughnut Chart -->
+        <div class="glass-panel rounded-2xl p-5 border border-slate-800 flex flex-col justify-between">
+          <h3 class="text-sm font-semibold text-slate-200 mb-3 flex items-center gap-2">
+            <i data-lucide="pie-chart" class="w-4 h-4 text-indigo-400"></i> Category Distribution
+          </h3>
+          <div class="h-64 relative">
+            <canvas id="categoryChartCanvas"></canvas>
+          </div>
+        </div>
+
+        <!-- 2D Topic Clustering Map -->
+        <div class="lg:col-span-2 glass-panel rounded-2xl p-5 border border-slate-800 flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+              <i data-lucide="network" class="w-4 h-4 text-purple-400"></i>
+              <span>Notice Topic Clustering Map</span>
+            </h3>
+            <span class="text-[11px] text-purple-400 bg-purple-950/60 px-2 py-0.5 rounded-full border border-purple-800">
+              Interactive Map
+            </span>
+          </div>
+          <p class="text-xs text-slate-400 mb-3">
+            Notices related to similar topics (e.g., Exams, Placements, Fee Deadlines) automatically cluster together.
+          </p>
+          <div class="h-64 relative">
+            <canvas id="vectorSpaceCanvas"></canvas>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Global Fullscreen Modal: Notice Reader & NoticeBot AI -->
+  <div id="noticeDetailModal" class="fixed inset-0 z-50 modal-backdrop hidden flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+    <div class="glass-panel border border-slate-700 rounded-3xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
+      
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/60">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span id="modalNoticeCategory" class="text-xs px-2.5 py-1 rounded-full font-medium badge-general">Category</span>
+          <span id="modalNoticePriority" class="text-xs px-2.5 py-1 rounded-full font-medium">Priority</span>
+          <span id="modalNoticeDept" class="text-xs text-slate-400 flex items-center gap-1 font-medium">
+            <i data-lucide="building" class="w-3.5 h-3.5"></i> Dept
+          </span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="exportCalendarEvent()" class="p-2 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-indigo-400 transition" title="Add to Calendar (.ics)">
+            <i data-lucide="calendar-plus" class="w-4 h-4"></i>
+          </button>
+          <button onclick="speakNotice(state.activeNotice?.id)" class="p-2 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-indigo-400 transition" title="Listen Audio">
+            <i data-lucide="volume-2" class="w-4 h-4"></i>
+          </button>
+          <button onclick="closeNoticeModal()" class="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Body (Two-Column Layout: Notice Details on Left, NoticeBot on Right) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-y-auto">
+        
+        <!-- Left: Official Notice Reader -->
+        <div class="lg:col-span-7 p-6 space-y-4 border-b lg:border-b-0 lg:border-r border-slate-800 overflow-y-auto max-h-[75vh]">
+          
+          <h2 id="modalNoticeTitle" class="text-xl font-bold text-slate-100 leading-snug">
+            Notice Title
+          </h2>
+
+          <div class="flex items-center justify-between text-xs text-slate-400 pb-2 border-b border-slate-800">
+            <span>Posted: <span id="modalNoticeDate" class="text-slate-300">2026-10-25</span></span>
+            <span class="text-amber-400 font-medium">Deadline: <span id="modalNoticeDeadline">2026-11-15</span></span>
+          </div>
+
+          <!-- Summary Box -->
+          <div class="p-4 rounded-2xl bg-gradient-to-br from-indigo-950/70 to-slate-900 border border-indigo-700/50 shadow-inner">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
+                <i data-lucide="sparkles" class="w-4 h-4 text-indigo-400"></i> Key Highlights & Summary
+              </span>
+            </div>
+            <div id="modalNoticeSummary" class="text-xs text-slate-200 leading-relaxed space-y-1">
+              Loading summary...
+            </div>
+          </div>
+
+          <!-- Scanned Image Attachment (if available) -->
+          <div id="modalNoticeImageContainer"></div>
+
+          <!-- Full Content -->
+          <div class="space-y-2">
+            <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Official Circular Content</h4>
+            <div id="modalNoticeContent" class="text-xs sm:text-sm text-slate-300 whitespace-pre-line leading-relaxed bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+              Notice content goes here...
+            </div>
+          </div>
+
+          <!-- Tags -->
+          <div id="modalNoticeTags" class="flex items-center gap-1.5 flex-wrap pt-2">
+            <!-- Rendered via JS -->
+          </div>
+
+        </div>
+
+        <!-- Right: NoticeBot AI Assistant (Gemini & Claude) -->
+        <div class="lg:col-span-5 flex flex-col bg-slate-900/40 p-4 space-y-3 max-h-[75vh]">
+          
+          <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-indigo-600/40 flex items-center justify-center text-indigo-400">
+                <i data-lucide="bot" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <div class="text-xs font-bold text-slate-200">NoticeBot Assistant</div>
+                <div class="text-[10px] text-slate-400">Ask questions about this circular</div>
+              </div>
+            </div>
+
+            <!-- Assistant Model Selector -->
+            <select id="chatModelSelect" class="bg-slate-800 text-[11px] text-slate-300 border border-slate-700 rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer">
+              <option value="gemini" selected>Gemini Assistant</option>
+              <option value="claude">Claude Assistant</option>
+            </select>
+          </div>
+
+          <!-- Chat messages stream -->
+          <div id="chatMessagesContainer" class="flex-1 overflow-y-auto p-2 space-y-3 min-h-[220px]">
+            <!-- Injected via app.js -->
+          </div>
+
+          <!-- Quick Question Chips -->
+          <div class="flex items-center gap-1.5 overflow-x-auto py-1">
+            <button onclick="sendChatMessage('What is the exact deadline?')" class="text-[10px] px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 shrink-0">
+              📅 Last date?
+            </button>
+            <button onclick="sendChatMessage('Who is eligible for this?')" class="text-[10px] px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 shrink-0">
+              🎓 Eligibility?
+            </button>
+            <button onclick="sendChatMessage('Are there any fees or penalties mentioned?')" class="text-[10px] px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 shrink-0">
+              💰 Fees/Fines?
+            </button>
+          </div>
+
+          <!-- Chat input box -->
+          <div class="relative flex items-center pt-1">
+            <input 
+              id="chatInput" 
+              type="text" 
+              placeholder="Ask NoticeBot anything about this notice..." 
+              onkeydown="if(event.key === 'Enter') sendChatMessage()"
+              class="w-full bg-slate-800/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-400 focus:outline-none pr-10"
+            />
+            <button onclick="sendChatMessage()" class="absolute right-2 text-indigo-400 hover:text-indigo-300 p-1">
+              <i data-lucide="send" class="w-4 h-4"></i>
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Admin / Faculty Notice Studio Modal (with PaddleOCR & AI Drafter) -->
+  <div id="adminStudioModal" class="fixed inset-0 z-50 modal-backdrop hidden flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+    <div class="glass-panel border border-slate-700 rounded-3xl max-w-3xl w-full max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
+      
+      <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/60">
+        <div class="flex items-center gap-2">
+          <i data-lucide="file-plus" class="w-5 h-5 text-indigo-400"></i>
+          <h2 class="text-base font-bold text-white">Notice Publishing Studio</h2>
+        </div>
+        <button onclick="closeAdminStudioModal()" class="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-6 overflow-y-auto space-y-5">
+        
+        <!-- 1. Scanned Notice Uploader Section -->
+        <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+              <i data-lucide="scan-line" class="w-4 h-4"></i> Scan Physical Circular (Auto-Fill Form)
+            </span>
+            <span class="text-[10px] text-slate-400">Upload paper circular or photo</span>
+          </div>
+
+          <!-- Drag and drop zone -->
+          <div class="border-2 border-dashed border-slate-700 hover:border-emerald-500 rounded-xl p-4 text-center cursor-pointer transition bg-slate-950/40" onclick="document.getElementById('ocrFileInput').click()">
+            <input id="ocrFileInput" type="file" accept="image/*" class="hidden" onchange="handleOCRFileSelect(event)" />
+            <i data-lucide="upload-cloud" class="w-8 h-8 mx-auto text-emerald-400 mb-1"></i>
+            <p class="text-xs text-slate-300 font-medium">Click to upload notice image (JPG / PNG)</p>
+            <p class="text-[10px] text-slate-500">Automatically extracts notice title, date, department, and deadline</p>
+          </div>
+
+          <!-- Instant Demo Sample Buttons -->
+          <div class="flex items-center gap-2 text-xs text-slate-400 flex-wrap">
+            <span class="text-[11px]">Or test with 1-click sample notices:</span>
+            <button onclick="testSampleNotice('exam_notice.png')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[11px]">
+              📄 Sample Exam Circular
+            </button>
+            <button onclick="testSampleNotice('placement_drive.png')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[11px]">
+              📄 Sample Placement Circular
+            </button>
+            <button onclick="testSampleNotice('hackathon_announcement.png')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[11px]">
+              📄 Sample Hackathon Circular
+            </button>
+          </div>
+
+          <!-- Status Box -->
+          <div id="ocrExtractionStatus"></div>
+        </div>
+
+        <!-- 2. AI Notice Drafter (Gemini & Claude) -->
+        <div class="p-4 rounded-2xl bg-indigo-950/40 border border-indigo-800/50 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
+              <i data-lucide="sparkles" class="w-4 h-4 text-indigo-400"></i> AI Circular Drafting Assistant
+            </span>
+            <select id="aiDraftModel" class="bg-slate-800 text-[10px] text-indigo-300 border border-indigo-700/60 rounded px-2 py-0.5 focus:outline-none">
+              <option value="gemini">Gemini</option>
+              <option value="claude">Claude</option>
+            </select>
+          </div>
+          <div class="flex gap-2">
+            <input id="aiDraftPrompt" type="text" placeholder="e.g., 'Draft circular for library clearance and book return by Nov 15'..." class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 placeholder-slate-400 focus:outline-none" />
+            <button id="generateDraftBtn" onclick="generateAIDraft()" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium shrink-0">
+              Generate Draft
+            </button>
+          </div>
+        </div>
+
+        <!-- 3. Form Fields to Publish Notice -->
+        <div class="space-y-3">
+          <input type="hidden" id="newNoticeImagePath" />
+          
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Notice Title</label>
+            <input id="newNoticeTitle" type="text" placeholder="e.g., Mid-Term Examination Schedule & Hall Ticket Issuance" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none" />
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">Category</label>
+              <select id="newNoticeCategory" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none">
+                <option value="Examinations">Examinations</option>
+                <option value="Placements">Placements</option>
+                <option value="Events">Events</option>
+                <option value="Scholarships">Scholarships</option>
+                <option value="Fees & Finance">Fees & Finance</option>
+                <option value="Campus & Hostel">Campus & Hostel</option>
+                <option value="Sports">Sports</option>
+                <option value="General">General</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">Department</label>
+              <select id="newNoticeDept" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none">
+                <option value="All Departments">All Departments</option>
+                <option value="Computer Science">Computer Science</option>
+                <option value="Electronics">Electronics</option>
+                <option value="Mechanical">Mechanical</option>
+                <option value="Management">Management</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">Priority</label>
+              <select id="newNoticePriority" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none">
+                <option value="Critical">Critical (Urgent Alert)</option>
+                <option value="High">High</option>
+                <option value="Medium" selected>Medium</option>
+                <option value="Low">Low</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">Deadline Date (Optional)</label>
+              <input id="newNoticeDeadline" type="date" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">Tags (Comma separated)</label>
+              <input id="newNoticeTags" type="text" placeholder="Exams, Mandatory, CSE" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Notice Body / Content</label>
+            <textarea id="newNoticeContent" rows="5" placeholder="Full circular text..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-slate-100 focus:outline-none"></textarea>
+          </div>
+
+          <button onclick="publishNotice()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold text-xs transition shadow-lg shadow-indigo-600/30">
+            Publish Notice
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Settings Modal (API Keys & Model Preferences) -->
+  <div id="settingsModal" class="fixed inset-0 z-50 modal-backdrop hidden flex items-center justify-center p-4">
+    <div class="glass-panel border border-slate-700 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <i data-lucide="sliders" class="w-4 h-4 text-indigo-400"></i> Settings & API Keys
+        </h3>
+        <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-300 font-medium mb-1">Google Gemini API Key (Optional)</label>
+          <input id="settingsGeminiKey" type="password" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 focus:outline-none" />
+          <p class="text-[10px] text-slate-500 mt-1">Powers Gemini summaries and NoticeBot answers.</p>
+        </div>
+
+        <div>
+          <label class="block text-slate-300 font-medium mb-1">Anthropic Claude API Key (Optional)</label>
+          <input id="settingsClaudeKey" type="password" placeholder="sk-ant-..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 focus:outline-none" />
+          <p class="text-[10px] text-slate-500 mt-1">Powers Claude drafting and reasoning.</p>
+        </div>
+
+        <div>
+          <label class="block text-slate-300 font-medium mb-1">Preferred AI Assistant</label>
+          <select id="settingsPreferredLlm" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 focus:outline-none">
+            <option value="gemini">Google Gemini</option>
+            <option value="claude">Anthropic Claude</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
+        <button onclick="closeSettingsModal()" class="px-3 py-1.5 rounded-xl text-slate-400 hover:text-white text-xs">Cancel</button>
+        <button onclick="saveSettingsFromUI()" class="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold">Save Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Global Loader -->
+  <div id="globalLoader" class="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm hidden flex items-center justify-center">
+    <div class="p-4 rounded-2xl glass-panel border border-slate-700 flex items-center gap-3 text-xs text-indigo-300">
+      <span class="w-4 h-4 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin"></span>
+      <span>Loading notices & recommendations...</span>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800/80 bg-slate-950 py-4 text-center text-xs text-slate-500 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div>NexusNotice • Smart Campus Notice Management Portal</div>
+      <div class="flex items-center gap-3 text-[11px] text-slate-400">
+        <span>Examinations</span> • <span>Placements</span> • <span>Events</span> • <span>Scholarships</span> • <span>Hostel</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- App Script -->
+  <script src="/static/js/app.js"></script>
+  <script>
+    function filterByCategory(category, el) {
+      state.selectedCategory = category;
+      document.querySelectorAll('.cat-pill').forEach(btn => {
+        btn.classList.remove('bg-indigo-600', 'text-white');
+        btn.classList.add('bg-slate-800', 'text-slate-300');
+      });
+      if (el) {
+        el.classList.add('bg-indigo-600', 'text-white');
+        el.classList.remove('bg-slate-800', 'text-slate-300');
+      }
+      fetchAllNotices();
+      switchTab('all');
+    }
+  </script>
+</body>
+</html>

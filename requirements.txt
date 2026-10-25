@@ -1,0 +1,23 @@
+# Core Web Framework & Server
+fastapi>=0.110.0
+uvicorn>=0.28.0
+pydantic>=2.6.0
+python-multipart>=0.0.9
+
+# Dense Semantic Search & Vector Index
+sentence-transformers>=2.6.0
+faiss-cpu>=1.8.0
+numpy>=1.24.0
+
+# LLM APIs (Gemini & Claude)
+google-genai>=1.0.0
+anthropic>=0.25.0
+
+# Image Processing & Utilities
+pillow>=10.0.0
+requests>=2.31.0
+scikit-learn>=1.4.0
+
+# Optional: PaddleOCR (pre-installed / system dependent)
+# paddleocr>=2.7.0
+# paddlepaddle>=2.5.0
