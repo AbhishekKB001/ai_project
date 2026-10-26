@@ -17,12 +17,13 @@
       "notif-003"
     ],
     "history_notice_ids": [
+      "notif-8f0ef8",
+      "notif-003",
       "notif-005",
       "notif-001",
       "notif-007",
       "notif-002",
-      "notif-004",
-      "notif-003"
+      "notif-004"
     ]
   },
   {
@@ -82,9 +83,11 @@
     ],
     "bookmarked_notice_ids": [
       "notif-001",
-      "notif-005"
+      "notif-005",
+      "notif-3c7a54"
     ],
     "history_notice_ids": [
+      "notif-3c7a54",
       "notif-001",
       "notif-005"
     ]
@@ -105,6 +108,7 @@
       "notif-001"
     ],
     "history_notice_ids": [
+      "notif-8f0ef8",
       "notif-001"
     ]
   },

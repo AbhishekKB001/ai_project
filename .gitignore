@@ -25,3 +25,4 @@ Thumbs.db
 *.log
 tmp/
 .pytest_cache/
+uploads/notice_scan_*

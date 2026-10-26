@@ -79,6 +79,7 @@ class NoticeDraftRequest(BaseModel):
     department: Optional[str] = "All Departments"
     urgency: Optional[str] = "Medium"
     model: str = "gemini"
+    existing_content: Optional[str] = None
 
 class OCRProcessResponse(BaseModel):
     status: str

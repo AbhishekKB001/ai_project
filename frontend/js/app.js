@@ -670,7 +670,7 @@ async function processOCRUpload(file) {
             <span class="font-semibold flex items-center gap-1.5 text-emerald-300">
               <i data-lucide="check-circle" class="w-4 h-4"></i> Notice Scanned Successfully
             </span>
-            <span class="px-2 py-0.5 rounded bg-emerald-800 text-emerald-200 text-[10px]">Form Auto-filled</span>
+            <span class="px-2 py-0.5 rounded bg-emerald-800 text-emerald-200 text-[10px]">Engine: ${result.engine || 'Vision'}</span>
           </div>
           <div class="text-[11px] text-slate-300">Detected: <b>${result.detected_category}</b> | Deadline: <b>${result.detected_deadline || 'Not specified'}</b> | Dept: <b>${result.detected_department}</b></div>
         </div>
@@ -686,6 +686,7 @@ async function processOCRUpload(file) {
     const contentTextarea = document.getElementById("newNoticeContent");
     const tagsInput = document.getElementById("newNoticeTags");
     const imgPathInput = document.getElementById("newNoticeImagePath");
+    const aiDraftPrompt = document.getElementById("aiDraftPrompt");
 
     if (titleInput && result.detected_title) titleInput.value = result.detected_title;
     if (categorySelect && result.detected_category) categorySelect.value = result.detected_category;
@@ -695,6 +696,9 @@ async function processOCRUpload(file) {
     if (contentTextarea && result.raw_text) contentTextarea.value = result.raw_text;
     if (tagsInput && result.suggested_tags) tagsInput.value = result.suggested_tags.join(", ");
     if (imgPathInput && result.file_url) imgPathInput.value = result.file_url;
+    if (aiDraftPrompt && result.detected_title && !aiDraftPrompt.value) {
+      aiDraftPrompt.value = `Refine circular for: ${result.detected_title}`;
+    }
 
     lucide.createIcons();
   } catch (e) {
@@ -712,9 +716,16 @@ async function processOCRUpload(file) {
 async function generateAIDraft() {
   const promptInput = document.getElementById("aiDraftPrompt");
   const modelSelect = document.getElementById("aiDraftModel");
-  const prompt = promptInput ? promptInput.value.trim() : "";
-  if (!prompt) {
-    alert("Please write a topic or notes for the AI draft assistant!");
+  let prompt = promptInput ? promptInput.value.trim() : "";
+  const contentEl = document.getElementById("newNoticeContent");
+  const existingContent = contentEl ? contentEl.value.trim() : "";
+
+  // If prompt is empty but circular text was extracted, supply sensible default
+  if (!prompt && existingContent) {
+    prompt = "Refine and structure this scanned circular into a formal academic announcement";
+    if (promptInput) promptInput.value = prompt;
+  } else if (!prompt && !existingContent) {
+    alert("Please write a topic or upload a circular for the AI draft assistant!");
     return;
   }
 
@@ -731,6 +742,7 @@ async function generateAIDraft() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         prompt: prompt,
+        existing_content: existingContent,
         category: document.getElementById("newNoticeCategory")?.value || "General",
         department: document.getElementById("newNoticeDept")?.value || "All Departments",
         urgency: document.getElementById("newNoticePriority")?.value || "Medium",
@@ -738,8 +750,7 @@ async function generateAIDraft() {
       })
     });
     const data = await res.json();
-    const contentEl = document.getElementById("newNoticeContent");
-    if (contentEl) {
+    if (contentEl && data.draft) {
       contentEl.value = data.draft;
     }
     const titleEl = document.getElementById("newNoticeTitle");

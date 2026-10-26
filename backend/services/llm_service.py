@@ -13,9 +13,12 @@ class LLMService:
         claude_key = settings.get("anthropic_api_key") or os.getenv("ANTHROPIC_API_KEY") or ""
         return gemini_key.strip(), claude_key.strip()
 
-    def _generate_with_gemini(self, client, contents: str):
-        """Try gemini-3.8-flash, gemini-2.5-flash, then gemini-1.5-flash."""
-        candidate_models = ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
+    def _generate_with_gemini(self, client, contents: Any):
+        """Try gemini-2.0-flash first (standard, fast, multimodal), with fallbacks and model caching."""
+        candidate_models = ["gemini-2.0-flash", "gemini-flash-latest", "gemini-2.5-flash", "gemini-1.5-flash"]
+        if hasattr(self, "_cached_gemini_model") and self._cached_gemini_model:
+            candidate_models = [self._cached_gemini_model] + [m for m in candidate_models if m != self._cached_gemini_model]
+
         last_err = None
         for mod in candidate_models:
             try:
@@ -24,9 +27,16 @@ class LLMService:
                     contents=contents
                 )
                 if response and response.text:
+                    self._cached_gemini_model = mod
                     return response.text.strip(), mod
             except Exception as e:
                 last_err = e
+                err_str = str(e).lower()
+                print(f"Gemini candidate model '{mod}' notice: {e}")
+                # If key is invalid or unauthorized, don't waste time retrying other models
+                if any(k in err_str for k in ["api_key_invalid", "permission_denied", "unauthenticated", "401", "403", "api key not valid"]):
+                    print("Gemini API key is invalid or unauthorized; stopping further model retries.")
+                    break
         if last_err:
             raise last_err
         return None, None
@@ -88,15 +98,19 @@ class LLMService:
         # Intelligent NLP Fallback (offline mode)
         title = notice.get("title", "")
         content = notice.get("content", "")
-        deadline = notice.get("deadline", "Check notice details")
-        sentences = [s.strip() for s in content.split(".") if len(s.strip()) > 10]
-        first_sentence = sentences[0] if sentences else content[:120]
-        second_sentence = sentences[1] if len(sentences) > 1 else "Review all listed prerequisites before applying."
+        deadline = notice.get("deadline")
+        deadline_str = f"by {deadline}" if deadline else "according to institutional guidelines"
+
+        # Clean markdown headers if present
+        clean_content = re.sub(r'[*#_`]', '', content)
+        lines = [l.strip() for l in clean_content.splitlines() if len(l.strip()) > 15 and not any(k in l.upper() for k in ["REF NO", "DATE:", "CIRCULAR:", "OFFICE OF"])]
+        first_point = lines[0] if lines else f"Directives issued regarding {title}."
+        second_point = lines[1] if len(lines) > 1 else "All concerned students and faculty must review required criteria."
 
         fallback_summary = (
-            f"• Announcement: {title} ({first_sentence.rstrip('.')}).\n"
-            f"• Requirements: {second_sentence.rstrip('.')}.\n"
-            f"• Action Required: Comply with mandatory guidelines by {deadline}."
+            f"• Announcement: {title} — {first_point.rstrip('.')}.\n"
+            f"• Key Requirements: {second_point.rstrip('.')}.\n"
+            f"• Action Required: Follow stipulated instructions {deadline_str}."
         )
         return {
             "summary": fallback_summary,
@@ -220,27 +234,38 @@ class LLMService:
             "note": "For dynamic multi-turn reasoning, enter your Gemini or Claude API key in settings."
         }
 
-    def draft_notice(self, prompt: str, category: str = "General", department: str = "All Departments", urgency: str = "Medium", model: str = "gemini") -> Dict[str, Any]:
+    def draft_notice(self, prompt: str, category: str = "General", department: str = "All Departments", urgency: str = "Medium", model: str = "gemini", existing_content: Optional[str] = None) -> Dict[str, Any]:
         """
-        Draft an official notice from a rough prompt using Gemini or Claude.
+        Draft or refine an official notice from a rough prompt and/or extracted circular text.
+        Accurately preserves all factual data, deadlines, requirements, and circular context.
         """
         gemini_key, claude_key = self._get_api_keys()
 
         system_prompt = (
-            "You are an administrative director at an academic/corporate institution. "
-            "Write a formal, comprehensive, professional official notice circular based on the user's brief. "
-            "Include: Circular Header, Reference Number, Date, Clear Subject Line, Formal Opening, "
-            "Detailed Guidelines/Rules in bullet points, Eligibility/Audience, Mandatory Deadlines, "
-            "Penalties for non-compliance (if applicable), and Issuing Authority Signoff."
+            "You are an administrative director and academic affairs officer at an accredited college/university. "
+            "Write a formal, comprehensive, professional official notice circular. "
+            "Structure: Circular Header, Reference Number, Official Date, Subject Line, Formal Opening, "
+            "Detailed Guidelines/Rules in numbered bullet points, Eligibility/Target Audience, Mandatory Deadlines (in bold), "
+            "Penalties or Action Items for non-compliance, and Issuing Authority Signoff."
         )
+
+        source_block = ""
+        if existing_content and existing_content.strip():
+            source_block = (
+                f"\n--- SOURCE / EXTRACTED NOTICE CONTENT TO REFINE ---\n"
+                f"{existing_content.strip()}\n"
+                f"---------------------------------------------------\n"
+                f"CRITICAL INSTRUCTION: You MUST incorporate the genuine facts, specific dates, deadlines, room numbers, and requirements from the source circular text above. Do not invent arbitrary dates if dates are already provided in the source text."
+            )
 
         user_content = (
             f"Draft a notice with the following parameters:\n"
-            f"- Prompt/Topic: {prompt}\n"
+            f"- Prompt/Instructions: {prompt}\n"
             f"- Category: {category}\n"
             f"- Department: {department}\n"
             f"- Urgency: {urgency}\n"
-            f"Provide clean text formatting."
+            f"{source_block}\n"
+            f"Provide clean, formatted professional circular text."
         )
 
         if model == "gemini" and gemini_key:
@@ -263,7 +288,7 @@ class LLMService:
                 client = anthropic.Anthropic(api_key=claude_key)
                 msg = client.messages.create(
                     model="claude-3-5-sonnet-20241022",
-                    max_tokens=600,
+                    max_tokens=700,
                     system=system_prompt,
                     messages=[{"role": "user", "content": user_content}]
                 )
@@ -278,22 +303,40 @@ class LLMService:
         # Intelligent Fallback Draft Generator
         import datetime
         today_str = datetime.date.today().strftime("%B %d, %Y")
-        draft_text = (
-            f"COLLEGE OF ENGINEERING & TECHNOLOGY\n"
-            f"OFFICE OF ACADEMIC & ADMINISTRATIVE AFFAIRS\n\n"
-            f"REF NO: CET/ADMIN/2026/{urgency.upper()[:3]}-891\n"
-            f"DATE: {today_str}\n\n"
-            f"CIRCULAR: {prompt.upper()}\n\n"
-            f"This is to bring to the notice of all concerned students and faculty members "
-            f"belonging to {department} that the administration has issued the following directives:\n\n"
-            f"1. {prompt}.\n"
-            f"2. All affected individuals are requested to strictly adhere to the guidelines and schedule.\n"
-            f"3. Respective departments will coordinate verification and document processing through the official portal.\n"
-            f"4. Failure to comply within the stipulated time frame may attract administrative actions or penalties.\n\n"
-            f"For further queries, reach out to the Department Helpdesk during official working hours.\n\n"
-            f"By Order,\n"
-            f"Dean of Academic Affairs"
-        )
+
+        if existing_content and existing_content.strip():
+            raw_lines = [l.strip() for l in existing_content.splitlines() if l.strip()]
+            body_points = "\n".join(f"{i+1}. {l}" if not l.startswith(("•", "-", "*", "1.", "2.", "3.", "4.")) else l for i, l in enumerate(raw_lines[:7]))
+            draft_text = (
+                f"COLLEGE OF ENGINEERING & TECHNOLOGY\n"
+                f"OFFICE OF ACADEMIC & ADMINISTRATIVE AFFAIRS\n\n"
+                f"REF NO: CET/ADMIN/2026/{urgency.upper()[:3]}-891\n"
+                f"DATE: {today_str}\n\n"
+                f"CIRCULAR: {prompt.upper()}\n\n"
+                f"This official circular brings the following directives to the attention of all concerned students and faculty:\n\n"
+                f"{body_points}\n\n"
+                f"All concerned individuals are requested to strictly adhere to the guidelines and schedule.\n"
+                f"For further queries, reach out to the Department Helpdesk during official working hours.\n\n"
+                f"By Order,\n"
+                f"Dean of Academic Affairs"
+            )
+        else:
+            draft_text = (
+                f"COLLEGE OF ENGINEERING & TECHNOLOGY\n"
+                f"OFFICE OF ACADEMIC & ADMINISTRATIVE AFFAIRS\n\n"
+                f"REF NO: CET/ADMIN/2026/{urgency.upper()[:3]}-891\n"
+                f"DATE: {today_str}\n\n"
+                f"CIRCULAR: {prompt.upper()}\n\n"
+                f"This is to bring to the notice of all concerned students and faculty members "
+                f"belonging to {department} that the administration has issued the following directives:\n\n"
+                f"1. {prompt}.\n"
+                f"2. All affected individuals are requested to strictly adhere to the guidelines and schedule.\n"
+                f"3. Respective departments will coordinate verification and document processing through the official portal.\n"
+                f"4. Failure to comply within the stipulated time frame may attract administrative actions or penalties.\n\n"
+                f"For further queries, reach out to the Department Helpdesk during official working hours.\n\n"
+                f"By Order,\n"
+                f"Dean of Academic Affairs"
+            )
         return {
             "draft": draft_text,
             "engine": "intelligent-template-drafter",

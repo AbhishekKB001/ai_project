@@ -340,7 +340,8 @@ async def ai_draft_notice(req: NoticeDraftRequest):
         category=req.category,
         department=req.department,
         urgency=req.urgency,
-        model=req.model
+        model=req.model,
+        existing_content=req.existing_content
     )
     return res
 
