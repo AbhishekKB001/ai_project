@@ -14,8 +14,8 @@ class LLMService:
         return gemini_key.strip(), claude_key.strip()
 
     def _generate_with_gemini(self, client, contents: Any):
-        """Try gemini-2.0-flash first (standard, fast, multimodal), with fallbacks and model caching."""
-        candidate_models = ["gemini-2.0-flash", "gemini-flash-latest", "gemini-2.5-flash", "gemini-1.5-flash"]
+        """Try gemini-3.5-flash-lite first (fastest, multimodal), with fallbacks and model caching."""
+        candidate_models = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-flash-latest"]
         if hasattr(self, "_cached_gemini_model") and self._cached_gemini_model:
             candidate_models = [self._cached_gemini_model] + [m for m in candidate_models if m != self._cached_gemini_model]
 

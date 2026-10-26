@@ -237,7 +237,7 @@ def _process_with_gemini_vision(image_path: str) -> Optional[Dict[str, Any]]:
             "2. 'raw_text' MUST be the genuine extracted text from the image, accurately transcribing dates, rules, and contact information."
         )
 
-        candidate_models = ["gemini-2.0-flash", "gemini-flash-latest", "gemini-2.5-flash", "gemini-1.5-flash"]
+        candidate_models = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-flash-latest"]
         for mod in candidate_models:
             try:
                 response = client.models.generate_content(
